@@ -2,7 +2,7 @@ import scipy.sparse as sp
 import numpy as np
 from scipy.sparse import diags
 import matplotlib.pyplot as plt
-#%%
+#%% Hello friends!
 def construct_coefficient_matrix(n, alpha):
     diagsAu = [alpha*np.ones(n), (1-3*alpha)*np.ones(n+1), alpha*np.ones(n)]
     offset = [-1, 0, 1]
