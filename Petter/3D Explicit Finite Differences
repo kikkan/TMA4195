@@ -1,0 +1,154 @@
+import scipy.sparse as sp
+import numpy as np
+from scipy.sparse import diags
+import matplotlib.pyplot as plt
+import sys
+#%%3D
+def construct_firstandlast_layer(Nx, Ny, Nz, a, b, c):
+    #first layer
+    diagsA1u = [a*np.ones(Nx), (1-2*a-b-c)*np.ones(Nx+1), a*np.ones(Nx)] #upper/north row of first layer, equal to lower/south row
+    offset = [-1, 0, 1]
+    A1u = diags(diagsA1u, offset).tolil() 
+    A1u[0,0] = 1-a-b-c #corner
+    A1u[-1,-1] = 1-a-b-c #corner
+    
+    diagsAb = b*np.ones(Nx+1) #diagonal alpha y matrix
+    Ab = diags(diagsAb)
+    
+    diagsA1d = [a*np.ones(Nx), (1-2*a-2*b-c)*np.ones(Nx+1), a*np.ones(Nx)] #inner rows of first layer
+    A1d = diags(diagsA1d, offset).tolil()
+    A1d[0,0] = 1-a-2*b-c #side
+    A1d[-1,-1] = 1-a-2*b-c #side
+    
+    A0 = sp.csr_matrix(np.zeros((Nx+1, Nx+1)))                #0 matrix
+    #assembling first layer
+    r1 = sp.hstack((A1u, Ab, sp.hstack([A0]*(Ny+1-2))))      #first row A1u Aa 0 0 0
+    r2 = sp.hstack((Ab, A1d, Ab, sp.hstack([A0]*(Ny+1-3))))  #second row
+    rm2 = sp.hstack((sp.hstack([A0]*(Ny+1-3)), Ab, A1d, Ab)) #second to last row
+    rm1 = sp.hstack((sp.hstack([A0]*(Ny+1-2)), Ab, A1u))     #last row
+    rows = 0                                            
+    for j in range(2, Ny-1):                                 #assembling intermediate rows
+        left = sp.hstack([A0]*(j-1))
+        right = sp.hstack([A0]*(Ny+1-j-2))
+        row = sp.hstack((left, Ab, A1d, Ab, right))
+        if j == 2:
+            rows = row
+            continue
+        rows = sp.vstack((rows, row))
+    return sp.vstack((r1, r2, rows, rm2, rm1))
+
+def construct_intermediate_layer(Nx, Ny, Nz, a, b, c):
+    #intermediate layers
+    diagsA1u = [a*np.ones(Nx), (1-2*a-b-2*c)*np.ones(Nx+1), a*np.ones(Nx)] #upper/north row, equal to lower/south row
+    offset = [-1, 0, 1]
+    A1u = diags(diagsA1u, offset).tolil() 
+    A1u[0,0] = 1-a-b-2*c #corner
+    A1u[-1,-1] = 1-a-b-2*c #corner
+    
+    diagsAb = b*np.ones(Nx+1) #diagonal alpha matrix
+    Ab = diags(diagsAb)
+    
+    diagsA1d = [a*np.ones(Nx), (1-2*a-2*b-2*c)*np.ones(Nx+1), a*np.ones(Nx)] #inner rows of intermediate layer
+    A1d = diags(diagsA1d, offset).tolil()
+    A1d[0,0] = 1-a-2*b-2*c #side
+    A1d[-1,-1] = 1-a-2*b-2*c #side
+    
+    A0 = sp.csr_matrix(np.zeros((Nx+1, Nx+1)))                #0 matrix
+    #assembling intermediate layer
+    r1 = sp.hstack((A1u, Ab, sp.hstack([A0]*(Ny+1-2))))      #first row of matrices
+    r2 = sp.hstack((Ab, A1d, Ab, sp.hstack([A0]*(Ny+1-3))))  #second row of matrices
+    rm2 = sp.hstack((sp.hstack([A0]*(Ny+1-3)), Ab, A1d, Ab)) #second to last row of matrices
+    rm1 = sp.hstack((sp.hstack([A0]*(Ny+1-2)), Ab, A1u))     #last row of matrices
+    rows = 0                                            
+    for j in range(2, Ny-1):                                 #assembling intermediate rows of matrices
+        left = sp.hstack([A0]*(j-1))
+        right = sp.hstack([A0]*(Ny+1-j-2))
+        row = sp.hstack((left, Ab, A1d, Ab, right))
+        if j == 2:
+            rows = row
+            continue
+        rows = sp.vstack((rows, row))
+    return sp.vstack((r1, r2, rows, rm2, rm1))
+
+def construct_3D_coefficient_matrix(Nx, Ny, Nz, a, b, c):
+    Afirst = construct_firstandlast_layer(Nx, Ny, Nz, a, b, c)
+    Aintermediate = construct_intermediate_layer(Nx, Ny, Nz, a, b, c)
+    diagsAc = c*np.ones((Nx+1)*(Ny+1)) #diagonal alpha z matrix
+    Ac = diags(diagsAc)
+    A0 = sp.csr_matrix(np.zeros(((Nx+1)*(Ny+1), (Nx+1)*(Ny+1))))
+    #assembling
+    l1 = sp.hstack((Afirst, Ac, sp.hstack([A0]*(Nz+1-2))))                 #first layer
+    l2 = sp.hstack((Ac, Aintermediate, Ac, sp.hstack([A0]*(Nz+1-3))))      #second layer
+    lm2= sp.hstack((sp.hstack([A0]*(Nz+1-3)), Ac, Aintermediate, Ac))      #second to last layer
+    lm1= sp.hstack((sp.hstack([A0]*(Nz+1-2)), Ac, Afirst))                 #last layer
+    layers = 0
+    for k in range(2, Nz-1):
+        left = sp.hstack([A0]*(k-1))
+        right = sp.hstack([A0]*(Nz+1-k-2))
+        layer = sp.hstack((left, Ac, Aintermediate, Ac, right))
+        if k == 2:
+            layers = layer
+            continue
+        layers = sp.vstack((layers, layer))
+    return sp.vstack((l1, l2, layers, lm2, lm1))
+
+def plot_3D(Nx, Ny, C):
+    x = np.linspace(0, 1, Nx+1)
+    y = np.linspace(0, 1, Ny+1)
+    x, y = np.meshgrid(x, y)
+    fig = plt.figure()
+    ax = fig.gca(projection="3d")
+    # ax.axes.set_zlim3d(0, 1)
+    z = C.reshape((Nx+1, Ny+1))
+    ax.plot_surface(x, y, z, cmap="viridis")
+    plt.show()
+    
+def plot_lineconcentration(x, y, Lz, Nx, Ny, Nz, C):
+    c_list = np.zeros(Nz)
+    for i in range(Nz):
+        c_list[i] = C[(y*(Nx+1)+x)+i*(Nx+1)*(Ny+1)]
+    plt.figure()
+    plt.plot(np.linspace(0, Lz, Nz), c_list)
+    plt.show()
+#%%3D
+Lx, Ly, Lz = 1., 1., 1.             #Length in x, y, z direction
+Dx, Dy, Dz = 0.1, 0.1, 0.2          #Diffusion constants in every direction
+Nx, Ny, Nz = 100, 100, 100          #N+1 is the amount of grid points in every direction
+dx, dy, dz = Lx/Nx, Ly/Ny, Lz/Nz    #Distance between gridpoints in each direction
+dt = dx**2                          #Stepsize in time
+a = Dx * dt/(dx)**2                 #alpha x direction
+b = Dy * dt/(dy)**2                 #alpha y direction
+c = Dz * dt/(dz)**2                 #alpha z direction
+#Dx*dt*1/(dx)**2 + Dy*dt*1/(dy)**2 + Dz*dt*1/(dz)**2 should be less than 1/2 for stability
+if a+b+c >= 0.5: 
+    print("a+b+c=", a+b+c, "Hey, stop, this will crash")
+    sys.exit()
+
+A = construct_3D_coefficient_matrix(Nx=Nx, Ny=Ny, Nz=Nz, a=a, b=b, c=c)
+
+k1 = 0.1
+km1 = 0.01
+
+K = (Nx+1)*(Ny+1)*(Nz+1)            #Amount of grid points
+cFR = np.zeros(K)                   #Free receptors
+cFR[(Nx+1)*(Ny+1)*Nz:] = 150./10201 #Putting free receptors only in final layer
+cBR = np.zeros(K)                   #Bound receptors
+cNT = np.zeros(K)                   #Neurotransmitters
+cNT[int(((Nx+1)*(Ny+1))/2)] = 5000. #Putting 5000 neurotransmitters at the center of the first layer
+# plot_3D(Nx=Nx, Ny=Ny, C=cFR[(Nx+1)*(Ny+1)*Nz:]) #Plotting concentration of free receptors in the final layer
+plot_lineconcentration(x=50, y=50, Lz=Lz, Nx=Nx, Ny=Ny, Nz=Nz, C=cNT) #Plotting concentration on the line (x,y,0) to (x,y, Nz)
+
+timesteps = int(0.5/dt)             #Change 0.5 to larger if you want to increase the amount of timesteps to go longer
+for i in range(timesteps):
+    cNT0 = np.copy(cNT) #Need to make temp variables since they are updated in one after another, but should use the original value
+    cFR0 = np.copy(cFR)
+    cBR0 = np.copy(cBR)
+    cNT = A@cNT0 - k1 * cNT0*cFR0 + km1 * cBR0
+    cFR = cFR0   - k1 * cNT0*cFR0 + km1 * cBR0
+    cBR = cBR0   + k1 * cNT0*cFR0 - km1 * cBR0
+    if i%100 == 0:
+        # print(i/timesteps, sum(cFR[(Nx+1)*(Ny+1)*Nz:])) #Plotting concentration of free receptors in final layer
+        # plot_3D(Nx=Nx, Ny=Ny, C=cFR[(Nx+1)*(Ny+1)*Nz:])
+        plot_lineconcentration(x=50, y=50, Lz=Lz, Nx=Nx, Ny=Ny, Nz=Nz, C=cNT) #Plotting concentration on the line (x,y,0) to (x,y, Nz)
+        # print(i/timesteps, sum(cNT[:(Nx+1)*(Ny+1)]))  #Plotting concentration of neurotransmitters in starting layer
+        # plot_3D(Nx, Ny, cNT[:(Nx+1)*(Ny+1)])
