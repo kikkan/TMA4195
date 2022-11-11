@@ -3,6 +3,16 @@ import matplotlib.pyplot as plt
 from scipy.sparse import diags, csr_matrix
 from scipy.sparse.linalg import spsolve, inv
 
+
+# %% TODO
+"""
+It is now working somewhat whith some artifacts prolly due to inaccuracy of the 
+CN and way to big steps etc. TODO:
+- Make function that computes max timestep.
+- Make finer grid and test.
+"""
+
+
 # %% Options
 np.set_printoptions(linewidth=160)
 
@@ -102,16 +112,18 @@ def CN2D(A: csr_matrix, B: csr_matrix, n0: np.ndarray, r0: np.ndarray, b0: np.nd
     Ainv = inv(A)
     AinvB = Ainv@B
     temp = np.zeros(nx)
+    dtf = np.zeros(nx)
     for t in range(ts-1):
         # n[t+1, :] = AinvB@n[t, :]  # only diffusion
         # n[t+1, :] = spsolve(A, B@n[t, :])  # Only diffusion
         #     n[t+1, :] = spsolve(A, B@n[t, :] + dt*f(n[t, :], r[t, :], b[t, :]))
         #     r[t+1, :] = dt*f(n[t, :], r[t, :], b[t, :])
         #     b[t+1, :] = -dt*f(n[t, :], r[t, :], b[t, :])
-        n[t+1, :] = AinvB@n[t, :] + Ainv@(dt*f(n[t, :], r[t, :], b[t, :]))
-        r[t+1, :] = r[t, :] + Ainv@(dt*f(n[t, :], r[t, :], b[t, :]))
-        b[t+1, :] = b[t, :] - Ainv@(dt*f(n[t, :], r[t, :], b[t, :]))
-        temp = Ainv@(dt*f(n[t, :], r[t, :], b[t, :]))
+        # print(t)
+        dtf = Ainv@(dt*f(n[t, :], r[t, :], b[t, :]))
+        n[t+1, :] = AinvB@n[t, :] + dtf
+        r[t+1, :] = r[t, :] + dtf
+        b[t+1, :] = b[t, :] - dtf
     return n, r, b, temp
 
 
@@ -159,18 +171,18 @@ n0 = 5000  # Neurotransmitters per vesicle pop
 # %% Discretization
 nx = 21  # Discretization in x
 ny = 21  # Dicretization in y
-# dx = height/nx
-# dx = 2*radius/nx
-# dy = 2*radius/ny
-dx = 0.1
-dy = 0.1
-dt = dx**2  # (dx*dy?)  # TODO scale
+dx = 2*radius/nx
+dy = 2*radius/ny
+dt = dx**2*1e6  # (dx*dy?)  # TODO scale
+# dx = 0.1
+# dy = 0.1
+# dt = 1e-8
 
 # %% scaling
-D = 0.01
+# D = 0.01
 kappa = D*dt  # TODO scale?
-sigma = 1
-# sigma = kappa / (2*dx*dy)
+# sigma = 1
+sigma = kappa / (2*dx*dy)
 
 # %% make grid and init state
 ma = 4*radius**2  # membrane area
@@ -183,10 +195,14 @@ n0[int(nx*ny/2)] = 5000
 
 
 def f(n, r, b):
+    # Something wrong here
+    # t = -k1*n*r + km1*b
+    # t = np.where
+    # return max(-k1*n*r + km1*b, -0.4)
     return -k1*n*r + km1*b
 
 
-timesteps = int(100)
+timesteps = int(400)
 
 A, B = makeA2D(nx, ny, sigma)
 # plt.spy(A)
@@ -195,12 +211,26 @@ A, B = makeA2D(nx, ny, sigma)
 n, r, b, fvals = CN2D(A, B, n0, r0, b0, timesteps)
 
 # %% debug plot
+# for t in range(0, 7):
+#     # plot_3D(nx, ny, n[t, :])
+#     print('NT and bound:            {}\n'
+#           'bound and free:          {}\n'
+#           'NT and free and 2xBound: {}\n\n'
+#           ''.format(np.sum(n[t, :])+np.sum(b[t, :]),
+#                     np.sum(b[t, :]) + np.sum(r[t, :]),
+#                     np.sum(n[t, :]) + np.sum(r[t, :]) + 2*np.sum(b[t, :])))
+
+print("steplength in time:", dt, "\n", "#"*50)
 for t in range(0, timesteps, int(timesteps/5)):
     plot_3D(nx, ny, n[t, :])
-    print('NT and bound:            {}\n'
+    plot_3D(nx, ny, r[t, :])
+    plot_3D(nx, ny, b[t, :])
+    print('NT                       {}\n'
+          'NT and bound:            {}\n'
           'bound and free:          {}\n'
           'NT and free and 2xBound: {}\n\n'
-          ''.format(np.sum(n[t, :])+np.sum(b[t, :]),
+          ''.format(np.sum(n[t, :]),
+                    np.sum(n[t, :])+np.sum(b[t, :]),
                     np.sum(b[t, :]) + np.sum(r[t, :]),
                     np.sum(n[t, :]) + np.sum(r[t, :]) + 2*np.sum(b[t, :])))
 
@@ -218,10 +248,10 @@ def rowSum(a):
     return ierror
 
 
-aiErr = rowSum(A)
-biErr = rowSum(B)
-print(aiErr)
-print(biErr)
+# aiErr = rowSum(A)
+# biErr = rowSum(B)
+# print(aiErr)
+# print(biErr)
 # print(A[22, :])
 
 
