@@ -2,6 +2,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.sparse import diags, csr_matrix
 from scipy.sparse.linalg import spsolve, inv
+from mpl_toolkits.mplot3d import Axes3D
+from matplotlib import animation
+from matplotlib import cm
+from tqdm import tqdm
+import numpy as np
+from alive_progress import alive_bar
 
 
 # %% TODO
@@ -9,7 +15,10 @@ from scipy.sparse.linalg import spsolve, inv
 It is now working somewhat whith some artifacts prolly due to inaccuracy of the 
 CN and way to big steps etc. TODO:
 - Make function that computes max timestep.
+    Found by considering mult of uniformly distr NT times R sometin?!
 - Make finer grid and test.
+- Using progress bar somehow fcks up the animation plots on my computer, so that
+    I can only plot one concentration at each run. Left it there cuz it's cool.
 """
 
 
@@ -113,23 +122,23 @@ def CN2D(A: csr_matrix, B: csr_matrix, n0: np.ndarray, r0: np.ndarray, b0: np.nd
     AinvB = Ainv@B
     temp = np.zeros(nx)
     dtf = np.zeros(nx)
-    for t in range(ts-1):
-        # n[t+1, :] = AinvB@n[t, :]  # only diffusion
-        # n[t+1, :] = spsolve(A, B@n[t, :])  # Only diffusion
-        #     n[t+1, :] = spsolve(A, B@n[t, :] + dt*f(n[t, :], r[t, :], b[t, :]))
-        #     r[t+1, :] = dt*f(n[t, :], r[t, :], b[t, :])
-        #     b[t+1, :] = -dt*f(n[t, :], r[t, :], b[t, :])
-        # print(t)
-        dtf = Ainv@(dt*f(n[t, :], r[t, :], b[t, :]))
-        n[t+1, :] = AinvB@n[t, :] + dtf
-        r[t+1, :] = r[t, :] + dtf
-        b[t+1, :] = b[t, :] - dtf
+    with alive_bar(ts-1) as bar:
+        for t in (range(ts-1)):
+            # n[t+1, :] = AinvB@n[t, :]  # only diffusion
+            # n[t+1, :] = spsolve(A, B@n[t, :])  # Only diffusion
+            #     n[t+1, :] = spsolve(A, B@n[t, :] + dt*f(n[t, :], r[t, :], b[t, :]))
+            #     r[t+1, :] = dt*f(n[t, :], r[t, :], b[t, :])
+            #     b[t+1, :] = -dt*f(n[t, :], r[t, :], b[t, :])
+            # print(t)
+            dtf = Ainv@(dt*f(n[t, :], r[t, :], b[t, :]))
+            n[t+1, :] = AinvB@n[t, :] + dtf
+            r[t+1, :] = r[t, :] + dtf
+            b[t+1, :] = b[t, :] - dtf
+            bar()
     return n, r, b, temp
 
 
 # %% 2D plot functions
-
-
 def plot_heatmap(n, C):
     p = C.reshape((n+1, n+1))
     plt.imshow(p, cmap="hot")  # , interpolation="nearest")
@@ -169,8 +178,8 @@ n0 = 5000  # Neurotransmitters per vesicle pop
 # n0 = 5000  # Neurotransmitters per vesicle pop
 
 # %% Discretization
-nx = 21  # Discretization in x
-ny = 21  # Dicretization in y
+nx = 51  # Discretization in x
+ny = 51  # Dicretization in y
 dx = 2*radius/nx
 dy = 2*radius/ny
 dt = dx**2*1e6  # (dx*dy?)  # TODO scale
@@ -195,14 +204,14 @@ n0[int(nx*ny/2)] = 5000
 
 
 def f(n, r, b):
-    # Something wrong here
     # t = -k1*n*r + km1*b
     # t = np.where
     # return max(-k1*n*r + km1*b, -0.4)
+    # TODO make max n*r and zero if not too slow
     return -k1*n*r + km1*b
 
 
-timesteps = int(400)
+timesteps = int(200)
 
 A, B = makeA2D(nx, ny, sigma)
 # plt.spy(A)
@@ -220,19 +229,20 @@ n, r, b, fvals = CN2D(A, B, n0, r0, b0, timesteps)
 #                     np.sum(b[t, :]) + np.sum(r[t, :]),
 #                     np.sum(n[t, :]) + np.sum(r[t, :]) + 2*np.sum(b[t, :])))
 
-print("steplength in time:", dt, "\n", "#"*50)
-for t in range(0, timesteps, int(timesteps/5)):
-    plot_3D(nx, ny, n[t, :])
-    plot_3D(nx, ny, r[t, :])
-    plot_3D(nx, ny, b[t, :])
-    print('NT                       {}\n'
-          'NT and bound:            {}\n'
-          'bound and free:          {}\n'
-          'NT and free and 2xBound: {}\n\n'
-          ''.format(np.sum(n[t, :]),
-                    np.sum(n[t, :])+np.sum(b[t, :]),
-                    np.sum(b[t, :]) + np.sum(r[t, :]),
-                    np.sum(n[t, :]) + np.sum(r[t, :]) + 2*np.sum(b[t, :])))
+# print and plot vals
+# print("steplength in time:", dt, "\n", "#"*50)
+# for t in range(0, timesteps, int(timesteps/5)):
+#     plot_3D(nx, ny, n[t, :])
+#     plot_3D(nx, ny, r[t, :])
+#     plot_3D(nx, ny, b[t, :])
+#     print('NT                       {}\n'
+#           'NT and bound:            {}\n'
+#           'bound and free:          {}\n'
+#           'NT and free and 2xBound: {}\n\n'
+#           ''.format(np.sum(n[t, :]),
+#                     np.sum(n[t, :])+np.sum(b[t, :]),
+#                     np.sum(b[t, :]) + np.sum(r[t, :]),
+#                     np.sum(n[t, :]) + np.sum(r[t, :]) + 2*np.sum(b[t, :])))
 
 # plot(fvals)
 
@@ -260,3 +270,76 @@ def rowSum(a):
 #     plt.plot(x, n[t, :])
 # print(A.toarray())
 # print(B.toarray())
+
+# %% 3D plot
+def update(t, c, line, zlim):
+    """updates 3D animation
+
+    Args:
+        t (int): Current timestep
+        c (np.array): Concentration of substance
+        line (?): line to be updated in 3D
+    """
+    # line.set_data()
+    # line.set_3d_properties(c[t, :].reshape(nx, ny))
+
+    ax.clear()
+    z = c[t, :].reshape(nx, ny)
+    plotset(z, zlim)
+    plt.title("t = {}/{}".format(t, timesteps))
+    surf = ax.plot_surface(x, y, z, rstride=1, cstride=1,
+                           cmap=cm.coolwarm, linewidth=0, antialiased=False,
+                           alpha=0.7)
+    return surf,
+
+
+def plotset(z, zlim):
+    ax.set_xlim3d(0., 1.)
+    ax.set_ylim3d(0., 1.)
+    if zlim == None:
+        ax.set_zlim3d(0, np.max(z))
+    else:
+        ax.set_zlim3d(0, zlim)
+    ax.set_zlim3d(0, np.max(z))
+    ax.set_autoscalez_on(False)
+    # ax.zaxis.set_major_locator(LinearLocator(10))
+    # ax.zaxis.set_major_formatter(FormatStrFormatter('%.02f'))
+    cset = ax.contour(x, y, z, zdir='x', offset=0., cmap=cm.coolwarm)
+    cset = ax.contour(x, y, z, zdir='y', offset=1., cmap=cm.coolwarm)
+    cset = ax.contour(x, y, z, zdir='z', offset=-1., cmap=cm.coolwarm)
+
+
+def plot3D(c, zlim=None):
+    global x, y, z
+    x = np.linspace(0, 1, nx)
+    y = np.linspace(0, 1, ny)
+    x, y = np.meshgrid(x, y)
+    c0 = c[0, :]
+    z = c0.reshape((nx, ny))
+
+    fig = plt.figure()
+    global ax
+    ax = fig.add_subplot(111, projection='3d')
+
+    ax.set_xlim3d(0., 1.)
+    ax.set_ylim3d(0., 1.)
+    if zlim == None:
+        ax.set_zlim3d(0, np.max(c))
+    else:
+        ax.set_zlim3d(0, zlim)
+
+    cset = ax.contour(x, y, z, zdir='x', offset=0., cmap=cm.coolwarm)
+    cset = ax.contour(x, y, z, zdir='y', offset=1., cmap=cm.coolwarm)
+    cset = ax.contour(x, y, z, zdir='z', offset=-1., cmap=cm.coolwarm)
+
+    surf = ax.plot_surface(x, y, z, rstride=1, cstride=1, cmap=cm.coolwarm,
+                           linewidth=0, antialiased=False, alpha=0.7)
+
+    ani = animation.FuncAnimation(fig, update, fargs=(c, surf, zlim), frames=timesteps, interval=30, blit=False)
+    plt.show()
+    plt.close()
+
+
+plot3D(n)
+plot3D(r, 1)
+plot3D(b, 1)
