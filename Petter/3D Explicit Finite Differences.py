@@ -251,6 +251,7 @@ for t in range(0, timesteps, int(timesteps/10)):
 # r0 = Uv.copy() + cFR0
 # b0 = Uv.copy()
 # n0[int((Nx+1)*(Ny+1)/2)] = 5000
+# A = construct_3D_coefficient_matrix(Nx=Nx, Ny=Ny, Nz=Nz, ax=ax, ay=ay, az=az)
 
 n, r, b = n0, r0, b0
 dtf = np.zeros(Nx+1)
