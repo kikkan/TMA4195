@@ -206,14 +206,7 @@ A = construct_3D_coefficient_matrix(Nx=Nx, Ny=Ny, Nz=Nz, ax=ax, ay=ay, az=az)
 #%% EFD3D Run
 timesteps = 1000
 n, r, b = EFD3D(A, n0, r0, b0, Nx, Ny, Nz, dt, ts=timesteps)
-#%% Plotting EFD Lineconcentration
-for t in range(0, timesteps, int(timesteps/5)):
-    # Plotting the concentration of neurotransmitters on the line x = Nx/2, y = Ny/2, z = 0 to z = Nz
-    print(np.sum(n[t,:]))
-    print(np.sum(n[t,:])+np.sum(b[t,:]),"\n")
-    
-    plot_lineconcentration(x=int(Nx/2), y=int(Ny/2), Lz=Lz, Nx=Nx, Ny=Ny, Nz=Nz, C=n[t,:])
-#%% Plotting EFD layer concentration
+#%% Plotting EFD concentrations
 for t in range(0, timesteps, int(timesteps/10)):
     plot_3D(Nx, Ny, n[t,:(Nx+1)*(Ny+1)])  #Plotting concentration of neurtransmitters in the first layer
     # plot_3D(Nx, Ny, r[t,(Nx+1)*(Ny+1)*Nz:]) #Plotting concentration of free receptors in the final layer
