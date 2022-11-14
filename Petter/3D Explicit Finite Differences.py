@@ -179,11 +179,11 @@ def plot_lineconcentration(x, y, Lz, Nx, Ny, Nz, C):
     plt.plot(np.linspace(0, Lz, Nz), c_list)
     plt.show()
 #%% Initialization
-Lx, Ly, Lz = 1., 1., 1.#390.*1e-9, 390.*1e-9, 15.*1e-9 #Length in x, y, z direction
-Dx, Dy, Dz = 0.1, 0.1, 0.1#8*1e-7, 8*1e-7, 8*1e-7         #Diffusion constants in every direction
-Nx, Ny, Nz = 100, 100, 100#300, 300, 10                   #N+1 is the amount of grid points in every direction
+Lx, Ly, Lz = 390.*1e-9, 390.*1e-9, 15.*1e-9 #Length in x, y, z direction
+Dx, Dy, Dz = 8*1e-7, 8*1e-7, 8*1e-7         #Diffusion constants in every direction
+Nx, Ny, Nz = 300, 300, 10                   #N+1 is the amount of grid points in every direction
 dx, dy, dz = Lx/Nx, Ly/Ny, Lz/Nz            #Distance between gridpoints in each direction
-dt = dx**2 #* 1e5   #Multiply dt to be as big as possible while keeping sx+sy+sz        #Stepsize in time
+dt = dx**2 * 1e5   #Multiply dt to be as big as possible while keeping sx+sy+sz        #Stepsize in time
 ax = Dx * dt/(dx)**2                #alpha x direction
 ay = Dy * dt/(dy)**2                #alpha y direction
 az = Dz * dt/(dz)**2                #alpha z direction
@@ -191,7 +191,7 @@ if ax+ay+az >= 0.5:
     print("alpha_x + alpha_y + alpha_z =", ax+ay+az , "Hey, stop, this will crash")
     sys.exit()
     
-k1 = 4*1e6 #
+k1 = 4*1e6
 km1 = 5
 
 K = (Nx+1)*(Ny+1)*(Nz+1)            #Amount of grid points
