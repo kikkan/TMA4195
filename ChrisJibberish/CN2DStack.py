@@ -15,7 +15,7 @@ from alive_progress import alive_bar
 It is now working somewhat whith some artifacts prolly due to inaccuracy of the 
 CN and way to big steps etc. TODO:
 - Make function that computes max timestep.
-    Found by considering mult of uniformly distr NT times R sometin?!
+    Found by considering mult of uniformly distr NT times R sometin?!   
 - Make finer grid and test.
 - Using progress bar somehow fcks up the animation plots on my computer, so that
     I can only plot one concentration at each run. Left it there cuz it's cool.
@@ -164,7 +164,7 @@ D = 8e-7  # Diffusion coefficient (8e-7)
 k1 = 4e6  # Forward reaction coefficient (4e6)
 km1 = 5  # Backward reaction coefficient (5)
 # r0 = 152  # receptors on membrane (1000/(1e-6)^2 * 2*pi*(220e-9))
-r0 = 192  # Square area
+r0 = 193.6  # Square area
 n0 = 5000  # Neurotransmitters per vesicle pop
 
 # Units in micro
@@ -211,7 +211,7 @@ def f(n, r, b):
     return -k1*n*r + km1*b
 
 
-timesteps = int(200)
+timesteps = int(1000)
 
 A, B = makeA2D(nx, ny, sigma)
 # plt.spy(A)
@@ -309,7 +309,7 @@ def plotset(z, zlim):
     cset = ax.contour(x, y, z, zdir='z', offset=-1., cmap=cm.coolwarm)
 
 
-def plot3D(c, zlim=None):
+def plot3D(c, zlim=None, title = None):
     global x, y, z
     x = np.linspace(0, 1, nx)
     y = np.linspace(0, 1, ny)
@@ -327,6 +327,9 @@ def plot3D(c, zlim=None):
         ax.set_zlim3d(0, np.max(c))
     else:
         ax.set_zlim3d(0, zlim)
+    
+    if title: 
+        plt.title(title)
 
     cset = ax.contour(x, y, z, zdir='x', offset=0., cmap=cm.coolwarm)
     cset = ax.contour(x, y, z, zdir='y', offset=1., cmap=cm.coolwarm)
@@ -340,6 +343,20 @@ def plot3D(c, zlim=None):
     plt.close()
 
 
-plot3D(n)
-plot3D(r, 1)
-plot3D(b, 1)
+# plot3D(n, title = "Neurotransmitter concentration")
+# plot3D(r, 1, title = "Receptor concentration")
+# plot3D(b, 1, title = "Bound receptor concentration")
+
+n_r = np.sum(r, axis = 1)
+n_b = np.sum(b, axis = 1)
+P = n_b[1:]/n_r[1:]  
+  
+print(np.min(P))
+print(np.min(np.argwhere(P >= 0.5)))
+
+plt.plot(n_r)
+plt.plot(n_b)
+plt.show()
+
+plt.plot(P)
+plt.show()
