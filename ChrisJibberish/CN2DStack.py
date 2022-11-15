@@ -343,16 +343,17 @@ def plot3D(c, zlim=None, title = None):
     plt.close()
 
 
-# plot3D(n, title = "Neurotransmitter concentration")
-# plot3D(r, 1, title = "Receptor concentration")
-# plot3D(b, 1, title = "Bound receptor concentration")
+plot3D(n, title = "Neurotransmitter concentration")
+plot3D(r, 1, title = "Receptor concentration")
+plot3D(b, 1, title = "Bound receptor concentration")
 
 n_r = np.sum(r, axis = 1)
 n_b = np.sum(b, axis = 1)
 P = n_b[1:]/n_r[1:]  
   
 print(np.min(P))
-print(np.min(np.argwhere(P >= 0.5)))
+iter = np.min(np.argwhere(P >= 0.5))
+print(iter, dt*iter)
 
 plt.plot(n_r)
 plt.plot(n_b)
