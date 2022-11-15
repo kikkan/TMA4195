@@ -266,8 +266,9 @@ for t in range(timesteps-1):
         sys.exit()
     if t % 100 == 0:
         # plot_3D(Nx, Ny, n[:(Nx+1)*(Ny+1)])  #Plotting concentration of neurtransmitters in the first layer
-        plot_3D(Nx, Ny, r[(Nx+1)*(Ny+1)*Nz:]) #Plotting concentration of free receptors in the final layer
-        # plot_lineconcentration(x=int(Nx/2), y=int(Ny/2), Lz=Lz, Nx=Nx, Ny=Ny, Nz=Nz, C=n[t,:])
+        # plot_3D(Nx, Ny, r[(Nx+1)*(Ny+1)*Nz:]) #Plotting concentration of free receptors in the final layer
+        # print(timesteps, np.sum(n[(Nx+1)*(Ny+1)*Nz:])) Printing sum of neurotransmitters in the final layer
+        plot_lineconcentration(x=int(Nx/2), y=int(Ny/2), Lz=Lz, Nx=Nx, Ny=Ny, Nz=Nz, C=n[t,:])
         #^Plotting the concentration of neurotransmitters on the line x = Nx/2, y = Ny/2, z = 0 to z = Nz
 
 #%% CN 3D This doesnt work, or at least it takes ages to invert the A matrix
