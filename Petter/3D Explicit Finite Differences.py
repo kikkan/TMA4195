@@ -96,27 +96,52 @@ def construct_3D_coefficient_matrix(Nx, Ny, Nz, ax, ay, az):
     return sp.vstack((l1, l2, layers, lm2, lm1))
 
 def EFD3D(A, n0, r0, b0, nx, ny, nz, dt, ts):
-    n = np.zeros((ts, (nx+1)*(ny+1)*(nz+1)))
-    r = np.zeros((ts, (nx+1)*(ny+1)*(nz+1)))
-    b = np.zeros((ts, (nx+1)*(ny+1)*(nz+1)))
-    n[0,:], r[0,:], b[0,:] = n0, r0, b0
+    # n = np.zeros((ts, (nx+1)*(ny+1)*(nz+1)))
+    # r = np.zeros((ts, (nx+1)*(ny+1)*(nz+1)))
+    # b = np.zeros((ts, (nx+1)*(ny+1)*(nz+1)))
+    # n[0,:], r[0,:], b[0,:] = n0, r0, b0
+    
+    n_fl = np.zeros((ts//100, (nx+1)*(ny+1)))
+    r_fl = np.zeros((ts//100, (nx+1)*(ny+1)))
+    b_fl = np.zeros((ts//100, (nx+1)*(ny+1)))  
+
+    n_prev, r_prev, b_prev = n0.copy(), r0.copy(), b0.copy()
+    print(np.sum(n_prev), np.sum(r_prev), np.sum(b_prev))
     dtf = np.zeros(nx+1)
     for t in range(ts-1):
-        if t % 100 == 0: print(t/(ts-1))
-        dtf = dt*f(n[t, :], r[t, :], b[t, :])
-        n[t+1,:] = A@n[t,:] + dtf
-        r[t+1,:] = r[t,:]   + dtf
-        b[t+1,:] = b[t,:]   - dtf
-        if np.min(n[t+1,:]) < 0:
+        dtf = dt*f(n_prev, r_prev, b_prev)
+        n = A@n_prev + dtf
+        r = r_prev   + dtf
+        b = b_prev   - dtf
+
+        if t % 1000 == 0: 
+            print(f"{t/(ts-1):.2f}")
+            plot_3D(nx, ny, n[(nx+1)*(ny+1)*nz:]) 
+            print("NT:                      {}\n"
+            "NT and bound:            {}\n"
+            "Bound and free:          {}\n"
+            "NT and free and 2xbound: {}\n"
+            "".format(np.sum(n),
+                        np.sum(n) + np.sum(b),
+                        np.sum(b) + np.sum(r),
+                        np.sum(n) + np.sum(r) + 2*np.sum(b)))
+
+        if (t+1) % 100 == 0:
+            n_fl[(t+1)//100, :] = n[(nx+1)*(ny+1)*nz:]
+            r_fl[(t+1)//100, :] = r[(nx+1)*(ny+1)*nz:]
+            b_fl[(t+1)//100, :] = b[(nx+1)*(ny+1)*nz:]
+
+        n_prev, r_prev, b_prev = n.copy(), r.copy(), b.copy()
+        if np.min(n) < 0:
             print("Help! The concentration of neurotransmitters is negative at some index!")
             sys.exit()
-        if np.min(n[t+1,:]) < 0:
+        if np.min(r) < 0:
             print("Help! The concentration of free receptors is negative at some index!")
             sys.exit()
-        if np.min(n[t+1,:]) < 0:
+        if np.min(b) < 0:
             print("Help! The concentration of bound receptors is negative at some index!")
             sys.exit()
-    return n, r, b
+    return n, r, b, n_fl, r_fl, b_fl
 
 def CN3D(A, B, n0, r0, b0, nx, ny, nz, dt, ts):
     """Performs CN in 2D using matrix multiplication.
@@ -198,28 +223,64 @@ K = (Nx+1)*(Ny+1)*(Nz+1)            #Amount of grid points
 cFR0 = 1e3*4*0.22**2/((Nx+1)*(Ny+1))
 Uv = np.zeros(K)                   
 n0 = Uv.copy()
-r0 = Uv.copy() + cFR0
+r0 = Uv.copy() 
+r0[(Nx+1)*(Ny+1)*Nz:] = cFR0
+print(np.sum(r0))
 b0 = Uv.copy()
 n0[int((Nx+1)*(Ny+1)/2)] = 5000
 #%% EFD3D constructing A matrix
 A = construct_3D_coefficient_matrix(Nx=Nx, Ny=Ny, Nz=Nz, ax=ax, ay=ay, az=az)
 #%% EFD3D Run
-timesteps = 1000
-n, r, b = EFD3D(A, n0, r0, b0, Nx, Ny, Nz, dt, ts=timesteps)
+timesteps = 10000
+print(timesteps*dt)
+n, r, b, n_fl, r_fl, b_fl = EFD3D(A, n0, r0, b0, Nx, Ny, Nz, dt, ts=timesteps)
+#%%
+plot_lineconcentration(x=int(Nx/2), y=int(Ny/2), Lz=Lz, Nx=Nx, Ny=Ny, Nz=Nz, C=n)# Plotting the concentration of neurotransmitters on the line x = Nx/2, y = Ny/2, z = 0 to z = Nz
+plot_lineconcentration(x=int(Nx/2), y=int(Ny/2), Lz=Lz, Nx=Nx, Ny=Ny, Nz=Nz, C=r)# Plotting the concentration of neurotransmitters on the line x = Nx/2, y = Ny/2, z = 0 to z = Nz
+plot_lineconcentration(x=int(Nx/2), y=int(Ny/2), Lz=Lz, Nx=Nx, Ny=Ny, Nz=Nz, C=b)# Plotting the concentration of neurotransmitters on the line x = Nx/2, y = Ny/2, z = 0 to z = Nz
+print(dt)
+
+# %%
+N_n = np.sum(n_fl, axis = 1)
+N_r = np.sum(r_fl, axis = 1)
+N_b = np.sum(b_fl, axis = 1)
+print(N_b)
+
+plt.plot(N_r)   # plotter antall R og B
+plt.plot(N_b)
+plt.show()
+
+print(N_n)
+plt.plot(N_n)   # plotter antall N
+plt.show()
+#%%
+P = N_b[1:]/N_r[1:]  
+  
+print(np.min(P))
+iter = np.min(np.argwhere(P >= 0.5))
+print(iter, dt*iter)
+plt.plot(P)
+plt.show()
+#%%
+print(10000//100)
+n_times = 0
+for i in range(10000):
+    if (i+1) % 100 == 0:n_times += 1
+print(n_times)
 #%% Plotting EFD concentrations
 for t in range(0, timesteps, int(timesteps/10)):
-    plot_3D(Nx, Ny, n[t,:(Nx+1)*(Ny+1)])  #Plotting concentration of neurtransmitters in the first layer
-    # plot_3D(Nx, Ny, r[t,(Nx+1)*(Ny+1)*Nz:]) #Plotting concentration of free receptors in the final layer
-    plot_lineconcentration(x=int(Nx/2), y=int(Ny/2), Lz=Lz, Nx=Nx, Ny=Ny, Nz=Nz, C=n[t,:])
-    #^Plotting the concentration of neurotransmitters on the line x = Nx/2, y = Ny/2, z = 0 to z = Nz
-    print("NT:                      {}\n"
-          "NT and bound:            {}\n"
-          "Bound and free:          {}\n"
-          "NT and free and 2xbound: {}\n"
-          "".format(np.sum(n[t, :]),
-                    np.sum(n[t, :]) + np.sum(b[t, :]),
-                    np.sum(b[t, :]) + np.sum(r[t, :]),
-                    np.sum(n[t, :]) + np.sum(r[t, :]) + 2*np.sum(b[t, :])))
+    # plot_3D(Nx, Ny, n[t,:(Nx+1)*(Ny+1)])  #Plotting concentration of neurtransmitters in the first layer
+    plot_3D(Nx, Ny, n[t,(Nx+1)*(Ny+1)*Nz:]) #Plotting concentration of free receptors in the final layer
+    plot_lineconcentration(x=int(Nx/2), y=int(Ny/2), Lz=Lz, Nx=Nx, Ny=Ny, Nz=Nz, C=n[t,:])# Plotting the concentration of neurotransmitters on the line x = Nx/2, y = Ny/2, z = 0 to z = Nz
+    print(f"iteration {t}, time {t*dt:.3f}  number of neurotransmitters {np.sum(n[t, (Nx+1)*(Ny+1)*Nz:]):.2f}") 
+    # print("NT:                      {}\n"
+    #       "NT and bound:            {}\n"
+    #       "Bound and free:          {}\n"
+    #       "NT and free and 2xbound: {}\n"
+    #       "".format(np.sum(n[t, :]),
+    #                 np.sum(n[t, :]) + np.sum(b[t, :]),
+    #                 np.sum(b[t, :]) + np.sum(r[t, :]),
+    #                 np.sum(n[t, :]) + np.sum(r[t, :]) + 2*np.sum(b[t, :])))
 #%% If we have too many timesteps, it's not feasible to save all the values all the time, the following is just an adhoc, easy way to
 # plot for large amount of timesteps
 # To run this code snippet, you first need to run the blocks Initialize and EFD3D constructing A matrix, this then runs as you expect
@@ -246,30 +307,30 @@ for t in range(0, timesteps, int(timesteps/10)):
 # n0[int((Nx+1)*(Ny+1)/2)] = 5000
 # A = construct_3D_coefficient_matrix(Nx=Nx, Ny=Ny, Nz=Nz, ax=ax, ay=ay, az=az)
 
-n, r, b = n0, r0, b0
-dtf = np.zeros(Nx+1)
-timesteps = 10000
-for t in range(timesteps-1):
-    if t % 100 == 0: print(t/(timesteps-1))
-    dtf = dt*f(n, r, b)
-    n = A@n + dtf
-    r = r   + dtf
-    b = b   - dtf
-    if np.min(n) < 0:
-        print("Help! The concentration of neurotransmitters is negative at some index!")
-        sys.exit()
-    if np.min(r) < 0:
-        print("Help! The concentration of free receptors is negative at some index!")
-        sys.exit()
-    if np.min(b) < 0:
-        print("Help! The concentration of bound receptors is negative at some index!")
-        sys.exit()
-    if t % 100 == 0:
-        # plot_3D(Nx, Ny, n[:(Nx+1)*(Ny+1)])  #Plotting concentration of neurtransmitters in the first layer
-        # plot_3D(Nx, Ny, r[(Nx+1)*(Ny+1)*Nz:]) #Plotting concentration of free receptors in the final layer
-        # print(timesteps, np.sum(n[(Nx+1)*(Ny+1)*Nz:])) Printing sum of neurotransmitters in the final layer
-        plot_lineconcentration(x=int(Nx/2), y=int(Ny/2), Lz=Lz, Nx=Nx, Ny=Ny, Nz=Nz, C=n[t,:])
-        #^Plotting the concentration of neurotransmitters on the line x = Nx/2, y = Ny/2, z = 0 to z = Nz
+# n, r, b = n0, r0, b0
+# dtf = np.zeros(Nx+1)
+# timesteps = 10000
+# for t in range(timesteps-1):
+#     if t % 100 == 0: print(t/(timesteps-1))
+#     dtf = dt*f(n, r, b)
+#     n = A@n + dtf
+#     r = r   + dtf
+#     b = b   - dtf
+#     if np.min(n) < 0:
+#         print("Help! The concentration of neurotransmitters is negative at some index!")
+#         sys.exit()
+#     if np.min(r) < 0:
+#         print("Help! The concentration of free receptors is negative at some index!")
+#         sys.exit()
+#     if np.min(b) < 0:
+#         print("Help! The concentration of bound receptors is negative at some index!")
+#         sys.exit()
+#     if t % 100 == 0:
+#         # plot_3D(Nx, Ny, n[:(Nx+1)*(Ny+1)])  #Plotting concentration of neurtransmitters in the first layer
+#         # plot_3D(Nx, Ny, r[(Nx+1)*(Ny+1)*Nz:]) #Plotting concentration of free receptors in the final layer
+#         print(timesteps, np.sum(n[(Nx+1)*(Ny+1)*Nz:])) # Printing sum of neurotransmitters in the final layer
+#         plot_lineconcentration(x=int(Nx/2), y=int(Ny/2), Lz=Lz, Nx=Nx, Ny=Ny, Nz=Nz, C=n[t,:])
+#         #^Plotting the concentration of neurotransmitters on the line x = Nx/2, y = Ny/2, z = 0 to z = Nz
 
 #%% CN 3D This doesnt work, or at least it takes ages to invert the A matrix
 # # %% CN 3D Constructing matrices

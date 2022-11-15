@@ -165,7 +165,7 @@ k1 = 4e6  # Forward reaction coefficient (4e6)
 km1 = 5  # Backward reaction coefficient (5)
 # r0 = 152  # receptors on membrane (1000/(1e-6)^2 * 2*pi*(220e-9))
 r0 = 193.6  # Square area
-n0 = 5000  # Neurotransmitters per vesicle pop
+n0 = 500  # Neurotransmitters per vesicle pop
 
 # Units in micro
 # height = 15e-3  # Height of cleft (15e-9)
