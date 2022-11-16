@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.sparse import diags, hstack
+from scipy.sparse import diags, csc_matrix
+from scipy.sparse.linalg import spsolve, inv
 
 
 # offset = np.array([-1, 0, 1])
@@ -23,11 +24,112 @@ from scipy.sparse import diags, hstack
 # m = d3s@v
 # print(m)
 
-n0=r0=b0 = np.ones(5)
+# n0=r0=b0 = np.ones(5)
 
-n = r = b = np.zeros((3, 5))
-n[0, :], r[0, :], b[0, :] = n0, r0, b0
-print(n)
-print(r)
-print(b)
-print("hello world")
+# n = r = b = np.zeros((3, 5))
+# n[0, :], r[0, :], b[0, :] = n0, r0, b0
+# print(n)
+# print(r)
+# print(b)
+# print("hello world")
+
+
+# %% make 3D A and invert
+# import time
+# nz = 30
+# nx = ny = nz
+# # nx = ny = 15*nz
+# offset = [-2*nx, -nx, -1, 0, 1, nx, 2*nx]
+# A = diags([-1, -1, -1, 5, -1, -1, -1], offset, (nx*ny*nz, nx*ny*nz))
+# # plt.spy(A)
+# # plt.show()
+# B=csc_matrix(A)
+# s = time.time()
+# Ainv = inv(B)
+# print(time.time() - s)
+
+
+# %% circle distr.
+def plot_3D(Nx, Ny, ct, g=0, save=0, fn=None, title=0):
+    x = np.linspace(0, 1, Nx)
+    y = np.linspace(0, 1, Ny)
+    x, y = np.meshgrid(x, y)
+    fig = plt.figure()
+    ax = fig.gca(projection="3d")
+    if g:
+        diff = ct.max() - ct.min()
+        ax.axes.set_zlim3d(ct.min() - g*diff, ct.max() + g*diff)
+    # z = ct.reshape((Nx, Ny))
+    z= ct
+    ax.plot_surface(x, y, z, cmap="viridis")
+    if title:
+        plt.title(title)
+    if save:
+        plt.savefig('figures\\'+fn+'.pdf')
+    else:
+        plt.show()
+
+
+def abc(x0, y0, x, r):
+    c = y0**2 + (x-x0)**2 - r**2
+    b = -2*y0
+    nom1 = -b + np.sqrt(b**2-4*c)
+    nom2 = -b - np.sqrt(b**2-4*c)
+    denom = 2
+    return np.array([nom1, nom2])/denom
+
+
+def discDistr(nx, ny, prec, r, loc):
+    x = np.linspace(loc[0]-r, loc[1]+r, prec)
+    y = abc(loc[0], loc[1], x, r)
+
+    if True:
+        plt.plot(x, y[0])
+        plt.plot(x, y[1])
+        plt.hlines(loc[0], 0, nx)
+        plt.vlines(loc[1], 0, ny)
+        plt.grid()
+        plt.show()
+    m = np.zeros((nx, ny))
+    for i in range(len(x)):
+        m[int(x[i]), [int(y[0, i]), int(y[1, i])]] = 1
+    return x, y, m
+
+
+# plt.plot(x, y[0])
+# plt.plot(x, y[1])
+# plt.grid()
+# plt.show()
+# nx=31
+# ny=31
+# x, y, m = discDistr(nx, ny, nx*ny, (nx/2)-2, [nx/2, nx/2])
+
+# plot_3D(nx, ny, m)
+# mArr = m.reshape(nx*ny)
+# plt.plot(mArr)
+# plt.show()
+# print(mArr)
+
+# %%
+def discDistr(nx, ny, loc, r, fluxTot):
+    m = np.zeros((nx, ny))
+    ind = []
+    for i in range(nx):
+        for j in range(ny):
+            if (i-loc[0])**2 + (j-loc[1])**2 <= r**2:
+                m[i, j] = 1
+                ind.append([i, j])
+    # print(np.array(ind))
+    ind = np.array(ind)
+    m[ind[:, 0], ind[:, 1]] = fluxTot/len(ind[:, 0])
+    # print(round(m, 2))
+    return m
+
+
+nx = 15
+ny = 15
+loc = [(nx-1)/2, (ny-1)/2]
+r = (nx/2)*0.5
+
+discDistr(nx, ny, loc, r, 3)
+# print(m)
