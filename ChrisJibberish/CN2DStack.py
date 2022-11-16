@@ -29,7 +29,7 @@ np.set_printoptions(linewidth=160)
 
 # %% run options
 run         = 1
-showAni     = 1
+showAni     = 0
 printAns    = 0
 saveFigs    = 0
 matrixDebug = 0
@@ -56,11 +56,11 @@ def discDistr(nx, ny, loc, r, fluxTot):
     for i in range(nx):
         for j in range(ny):
             if (i-loc[0])**2 + (j-loc[1])**2 <= r**2:
-                m[i, j] = 1
+                m[i, j] = (r**2 - ((i-loc[0])**2 + (j-loc[1])**2))/(np.pi*r**2)**2*fluxTot
                 ind.append([i, j])
     # print(np.array(ind))
     ind = np.array(ind)
-    m[ind[:, 0], ind[:, 1]] = fluxTot/len(ind[:, 0])
+    # m[ind[:, 0], ind[:, 1]] = fluxTot/len(ind[:, 0])
     # print(round(m, 2))
     return m.reshape(nx*ny)
 
@@ -476,5 +476,6 @@ if saveFigs:
         linestyle=['-', '-', 'dashed']
     )
 
+plot_3D(nx, ny, n[1, :])
 
 # %%
