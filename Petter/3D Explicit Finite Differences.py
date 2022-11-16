@@ -1,3 +1,4 @@
+# %%
 import scipy.sparse as sp
 import numpy as np
 from scipy.sparse import diags
@@ -96,13 +97,10 @@ def construct_3D_coefficient_matrix(Nx, Ny, Nz, ax, ay, az):
     return sp.vstack((l1, l2, layers, lm2, lm1))
 
 def EFD3D(A, n0, r0, b0, nx, ny, nz, dt, ts):
-    # n = np.zeros((ts, (nx+1)*(ny+1)*(nz+1)))
-    # r = np.zeros((ts, (nx+1)*(ny+1)*(nz+1)))
-    # b = np.zeros((ts, (nx+1)*(ny+1)*(nz+1)))
-    # n[0,:], r[0,:], b[0,:] = n0, r0, b0
-    
+      
     n_fl = np.zeros((ts//100, (nx+1)*(ny+1)))
     r_fl = np.zeros((ts//100, (nx+1)*(ny+1)))
+    r_fl[0, :] = r0[(nx+1)*(ny+1)*nz:]
     b_fl = np.zeros((ts//100, (nx+1)*(ny+1)))  
 
     n_prev, r_prev, b_prev = n0.copy(), r0.copy(), b0.copy()
@@ -212,9 +210,6 @@ dt = dx**2 * 1e5   #Multiply dt to be as big as possible while keeping sx+sy+sz 
 ax = Dx * dt/(dx)**2                #alpha x direction
 ay = Dy * dt/(dy)**2                #alpha y direction
 az = Dz * dt/(dz)**2                #alpha z direction
-if ax+ay+az >= 0.5: 
-    print("alpha_x + alpha_y + alpha_z =", ax+ay+az , "Hey, stop, this will crash")
-    sys.exit()
     
 k1 = 4*1e6
 km1 = 5
@@ -229,9 +224,12 @@ print(np.sum(r0))
 b0 = Uv.copy()
 n0[int((Nx+1)*(Ny+1)/2)] = 5000
 #%% EFD3D constructing A matrix
+if ax+ay+az >= 0.5: 
+    print("alpha_x + alpha_y + alpha_z =", ax+ay+az , "Hey, stop, this will crash")
+    sys.exit()
 A = construct_3D_coefficient_matrix(Nx=Nx, Ny=Ny, Nz=Nz, ax=ax, ay=ay, az=az)
 #%% EFD3D Run
-timesteps = 10000
+timesteps = 5000
 print(timesteps*dt)
 n, r, b, n_fl, r_fl, b_fl = EFD3D(A, n0, r0, b0, Nx, Ny, Nz, dt, ts=timesteps)
 #%%
@@ -239,20 +237,29 @@ plot_lineconcentration(x=int(Nx/2), y=int(Ny/2), Lz=Lz, Nx=Nx, Ny=Ny, Nz=Nz, C=n
 plot_lineconcentration(x=int(Nx/2), y=int(Ny/2), Lz=Lz, Nx=Nx, Ny=Ny, Nz=Nz, C=r)# Plotting the concentration of neurotransmitters on the line x = Nx/2, y = Ny/2, z = 0 to z = Nz
 plot_lineconcentration(x=int(Nx/2), y=int(Ny/2), Lz=Lz, Nx=Nx, Ny=Ny, Nz=Nz, C=b)# Plotting the concentration of neurotransmitters on the line x = Nx/2, y = Ny/2, z = 0 to z = Nz
 print(dt)
-
-# %%
+#%%
 N_n = np.sum(n_fl, axis = 1)
 N_r = np.sum(r_fl, axis = 1)
 N_b = np.sum(b_fl, axis = 1)
-print(N_b)
-
-plt.plot(N_r)   # plotter antall R og B
-plt.plot(N_b)
+# print(N_b)
+# plt.rcParams['text.usetex'] = True
+x_axis = np.arange(0, timesteps, 100)
+print(x_axis)
+plt.plot(x_axis, N_r, label = r"$N_r(\mathbf{x}, t)$")   # plotter antall R og B
+plt.plot(x_axis, N_b, '--', label = r"$N_b(\mathbf{x}, t)$")
+plt.legend(fontsize = 14)
 plt.show()
-
-print(N_n)
-plt.plot(N_n)   # plotter antall N
+# print(N_n)
+plt.plot(x_axis, N_n, label = r"$N_n(\mathbf{x}, t)$")   # plotter antall N
+plt.legend(fontsize = 14)
 plt.show()
+#%%
+
+for i in range(5000):
+    if(i+1)%100 == 0:
+        print(i+1)
+
+
 #%%
 P = N_b[1:]/N_r[1:]  
   
@@ -333,20 +340,20 @@ for t in range(0, timesteps, int(timesteps/10)):
 #         #^Plotting the concentration of neurotransmitters on the line x = Nx/2, y = Ny/2, z = 0 to z = Nz
 
 #%% CN 3D This doesnt work, or at least it takes ages to invert the A matrix
-# # %% CN 3D Constructing matrices
-# #The A matrix in CN is the same as the A in FD, only with 1+sigma on the diagonal, instead of 1-alpha 
-# #sigma in CN is equal to half the alpha used in FD, so one can input ax=-1/2*ax and get the correct matrix
-# A = construct_3D_coefficient_matrix(Nx=Nx, Ny=Ny, Nz=Nz, sx=-1/2*ax, sy=-1/2*ay, sz=-1/2*az)
-# #The B matrix in CN is the same as the A in FD, with 
-# B = construct_3D_coefficient_matrix(Nx=Nx, Ny=Ny, Nz=Nz, sx=ax, sy=-sy, sz=-sz)
-# #%% CN 3D 
-# timesteps = 100
-# n, r, b = CN3D(A, B, n0, r0, b0, Nx, Ny, Nz, dt, ts=timesteps)
-# #%% CN 3D plotting the concentration of neurotransmitters on the line x = Nx/2, y = Ny/2, z = 0 to z = Nz
-# for t in range(0, timesteps, int(timesteps/100)):
-#     print(np.sum(n[t,:]))
-#     print(np.sum(n[t,:])+np.sum(b[t,:]),"\n")
+# %% CN 3D Constructing matrices
+#The A matrix in CN is the same as the A in FD, only with 1+sigma on the diagonal, instead of 1-alpha 
+#sigma in CN is equal to half the alpha used in FD, so one can input ax=-1/2*ax and get the correct matrix
+A = construct_3D_coefficient_matrix(Nx=Nx, Ny=Ny, Nz=Nz, ax=-1/2*ax, ay=-1/2*ay, az=-1/2*az)
+#The B matrix in CN is the same as the A in FD, with 
+B = construct_3D_coefficient_matrix(Nx=Nx, Ny=Ny, Nz=Nz, ax=ax/2, ay=ay/2, az=az/2)
+#%% CN 3D 
+timesteps = 100
+n, r, b = CN3D(A, B, n0, r0, b0, Nx, Ny, Nz, dt, ts=timesteps)
+#%% CN 3D plotting the concentration of neurotransmitters on the line x = Nx/2, y = Ny/2, z = 0 to z = Nz
+for t in range(0, timesteps, int(timesteps/100)):
+    print(np.sum(n[t,:]))
+    print(np.sum(n[t,:])+np.sum(b[t,:]),"\n")
     
-#     plot_lineconcentration(x=int(Nx/2), y=int(Ny/2), Lz=Lz, Nx=Nx, Ny=Ny, Nz=Nz, C=n[t,:])
+    plot_lineconcentration(x=int(Nx/2), y=int(Ny/2), Lz=Lz, Nx=Nx, Ny=Ny, Nz=Nz, C=n[t,:])
 
 
