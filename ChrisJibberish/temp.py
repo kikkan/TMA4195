@@ -123,6 +123,8 @@ def discDistr(nx, ny, loc, r, fluxTot):
     ind = np.array(ind)
     m[ind[:, 0], ind[:, 1]] = fluxTot/len(ind[:, 0])
     # print(round(m, 2))
+
+    # make area = 1
     return m
 
 
