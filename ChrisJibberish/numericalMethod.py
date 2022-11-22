@@ -19,6 +19,14 @@ def f(n, r, b):
     return -k1*n*r + km1*b
 
 
+def stable(n, dn=1e-3):
+    return np.argmax(np.gradient(np.sum(n, axis=1))<dn)
+
+
+def signal(b, r0half=192/2):
+    return np.argmax(np.sum(b, axis=1)>r0half)
+
+
 # def abc(x0, y0, x, r):
 #     c = y0**2 + (x-x0)**2 - r**2
 #     b = -2*y0

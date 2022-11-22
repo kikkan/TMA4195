@@ -1,0 +1,5 @@
+Grid: (nx,ny) =         (31, 31)
+Timesteps, dt, endTime: 2000, 5.000e-09, 1.000e-05
+flux:                   20
+stable:                 193
+signal:                 624

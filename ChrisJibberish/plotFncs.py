@@ -3,9 +3,10 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import animation
 from matplotlib import cm
+from numericalMethod import *
 
 
-# %% 3D animate functions
+# %% 3D animation functions
 def update(t, c, line, zlim):
     """updates 3D animation
 
@@ -41,7 +42,7 @@ def plotset(z, zlim):
     cset = ax.contour(x, y, z, zdir='z', offset=-1., cmap='viridis')
 
 
-def animate3D(c, nx=0, ny=0, zlim=None, timesteps=500):
+def animate3D(c, nx=0, ny=0, zlim=None, timesteps=500, show=1):
     """Animates concentration assuming quadratic grid. If not quadratic, grid 
     size in x, nx, and y, ny, must be supplied.
 
@@ -84,10 +85,11 @@ def animate3D(c, nx=0, ny=0, zlim=None, timesteps=500):
 
     ani = animation.FuncAnimation(fig, update, fargs=(c, surf, zlim),
                                   frames=timesteps, interval=1, blit=False)
-    plt.show()
+    if show:
+        plt.show()
 
 
-# %% flux for a certain time
+# %% flux termination
 def plotFluxTermination(cTots: dict, ts: int, dt: float, **kwargs):
     """Plots concentration for different times of flux termination.
 
@@ -117,8 +119,9 @@ def plotFluxTermination(cTots: dict, ts: int, dt: float, **kwargs):
                 plt.hlines(v, x[0], x[-1], linestyles='dashed', colors="gray")
             case 'vlines':
                 for xt, c in cTots.items():
-                    plt.vlines(int(xt)*dt, 0, np.sum(c[int(xt)]), colors='gray', linestyles='dashed')
-                pass  # add? for stuff in args
+                    plt.vlines(int(float(xt))*dt, 0, np.sum(c[int(float(xt))]), colors='gray', linestyles='dashed')
+            case 'ticks':
+                plt.xticks([float(t)*dt for t in cTots.keys()])
             case 'save':
                 plt.savefig('figures\\'+v+'.pdf')
             case 'show':
@@ -145,26 +148,26 @@ def plot_3D(Nx, Ny, ct, g=0, save=0, fn=None, title=0, zlab=0):
     if save:
         plt.savefig('figures\\'+fn+'.pdf')
     else:
-        plt.show()
+        # plt.show()
+        pass
     # plt.show()
 
 
-def saveNTcritPlots(nx, ny, n, b, dn=1e-2, other=[], otherLabs=[]):
-    grad = np.gradient(n, axis=0)
-    diff = np.abs(n[:-1, :] - n[1:, :])
-    diffSum = np.sum(diff, axis=1)
-    gradSum = np.sum(grad, axis=1)
+def saveNTcritPlots(nx, ny, c, stable, signal, dn=1e-3, fnAdd='', other=[], otherLabs=[]):
+    # grad = np.gradient(n, axis=0)
+    # diff = np.abs(n[:-1, :] - n[1:, :])
+    # diffSum = np.sum(diff, axis=1)
+    # # gradSum = np.sum(grad, axis=1)
 
-    # plt.plot(diffSum)
-    # plt.plot(gradSum)
-    # plt.show()
-    # print(np.sum(gradSum - diffSum))
-    stable = np.argmax(diffSum<dn)
-    signal = np.argmax(np.sum(b, axis=1)>192/2)
-    plot_3D(nx, ny, n[0, :], save=1, fn="CN2D_n_initial")
-    print('stable:', stable, 'signal:', signal)
-    plot_3D(nx, ny, n[stable, :], save=1, fn="CN2D_n_stable_" + str(stable))
-    plot_3D(nx, ny, n[signal, :], save=1, fn="CN2D_n_signal" + str(signal))
+    # # plt.plot(diffSum)
+    # # plt.plot(gradSum)
+    # # plt.show()
+    # # print(np.sum(gradSum - diffSum))
+    # stable = stable(n, dn)
+    # signal = signal(b)
+    plot_3D(nx, ny, c[0, :], save=1, fn="CN2D_"+fnAdd+"_initial" + fnAdd)
+    plot_3D(nx, ny, c[stable, :], save=1, fn="CN2D_"+ fnAdd +"_stable_" +  str(stable))
+    plot_3D(nx, ny, c[signal, :], save=1, fn="CN2D_"+fnAdd +"_signal_" + fnAdd+str(signal))
     for i in range(len(other)):
         plot_3D(nx, ny, n[other[i], :], save=1, fn=otherLabs[i])
 
@@ -174,7 +177,6 @@ def plotConcProgress(cDict, x=0, **kwargs):
         x = np.arange(0, len(next(iter(cDict.values()))))
     for key, c in cDict.items():
         cTot = np.sum(c, axis=1)
-        # x = np.linspace(0, float(key), len(cTot))
         plt.plot(x, cTot, label=key)
 
     plt.legend()
@@ -188,5 +190,7 @@ def plotConcProgress(cDict, x=0, **kwargs):
                 plt.ylabel(v[1])
             case 'save':
                 plt.savefig('figures\\'+v+'.pdf')
+            case 'show':
+                plt.show()
 
-    plt.show()
+    # plt.show()

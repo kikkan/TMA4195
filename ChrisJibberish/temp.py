@@ -111,27 +111,35 @@ def discDistr(nx, ny, prec, r, loc):
 # print(mArr)
 
 # %%
-def discDistr(nx, ny, loc, r, fluxTot):
-    m = np.zeros((nx, ny))
-    ind = []
-    for i in range(nx):
-        for j in range(ny):
-            if (i-loc[0])**2 + (j-loc[1])**2 <= r**2:
-                m[i, j] = 1
-                ind.append([i, j])
-    # print(np.array(ind))
-    ind = np.array(ind)
-    m[ind[:, 0], ind[:, 1]] = fluxTot/len(ind[:, 0])
-    # print(round(m, 2))
+# def discDistr(nx, ny, loc, r, fluxTot):
+#     m = np.zeros((nx, ny))
+#     ind = []
+#     for i in range(nx):
+#         for j in range(ny):
+#             if (i-loc[0])**2 + (j-loc[1])**2 <= r**2:
+#                 m[i, j] = 1
+#                 ind.append([i, j])
+#     # print(np.array(ind))
+#     ind = np.array(ind)
+#     m[ind[:, 0], ind[:, 1]] = fluxTot/len(ind[:, 0])
+#     # print(round(m, 2))
 
-    # make area = 1
-    return m
+#     # make area = 1
+#     return m
 
 
-nx = 15
-ny = 15
-loc = [(nx-1)/2, (ny-1)/2]
-r = (nx/2)*0.5
+# nx = 15
+# ny = 15
+# loc = [(nx-1)/2, (ny-1)/2]
+# r = (nx/2)*0.5
 
-discDistr(nx, ny, loc, r, 3)
+# discDistr(nx, ny, loc, r, 3)
 # print(m)
+
+# %% plot ticks
+
+x = np.linspace(-10, 10, 35)
+y = x**2
+plt.plot(x, y)
+plt.xticks([-5, 0, 5])
+plt.show()
