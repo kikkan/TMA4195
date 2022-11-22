@@ -19,16 +19,28 @@ def f(n, r, b):
     return -k1*n*r + km1*b
 
 
-def abc(x0, y0, x, r):
-    c = y0**2 + (x-x0)**2 - r**2
-    b = -2*y0
-    nom1 = -b + np.sqrt(b**2-4*c)
-    nom2 = -b - np.sqrt(b**2-4*c)
-    denom = 2
-    return np.array([nom1, nom2])/denom
+# def abc(x0, y0, x, r):
+#     c = y0**2 + (x-x0)**2 - r**2
+#     b = -2*y0
+#     nom1 = -b + np.sqrt(b**2-4*c)
+#     nom2 = -b - np.sqrt(b**2-4*c)
+#     denom = 2
+#     return np.array([nom1, nom2])/denom
 
 
 def discDistr(nx, ny, loc, r, fluxTot):
+    """Creates a weighted disc distribution of a concentration over a 2D grid
+
+    Args:
+        nx (int): Gridpoints in x
+        ny (int): Gridpoints in y
+        loc (numpy.array): Location of the center of the disc
+        r (float): radius of disc
+        fluxTot (float): Total number of transmitters distr. on area of disc.
+
+    Returns:
+        numpy.array: (nx*ny,1) array with disc distribution of concentration
+    """
     m = np.zeros((nx, ny))
     ind = []
     for i in range(nx):
@@ -44,7 +56,7 @@ def discDistr(nx, ny, loc, r, fluxTot):
     return m.reshape(nx*ny)
 
 
-def makeA_2DNeyman(nx: int, ny: int, sigma: float, drch=1):
+def makeA_2DNeyman(nx: int, ny: int, sigma: float):
     """Make block matrix A. (First make A = dia(A_d), then add A_u and A_l
        to A. Furthermore, correct each diagonal block boundaries and corners in
        interior of A. Lastly fix two points.) (Made under assumption that rowsum
@@ -116,36 +128,28 @@ def makeA_2DDirichlet(nx: int, ny: int, sigma: float):
 
     # Convert to modifiable matrix type and modify
     A = csc_matrix(A_dia)
-    # A[0, 0] = 0
-    # A[nx*ny-1, nx*ny-1] = 0
-
-    # Fix block to the right/left of upper left/lower right
-    # xi = np.array([i for i in range(nx)])
-    # indices = np.array([i for i in range(nx)])
-    # yi = np.array([nx+i for i in range(nx)])
-    # A[indices, indices+nx] = 0
-    # A[nx*(ny-1) + indices, nx*(ny-2) + indices] = 0
 
     for i in range(0, ny*(nx-1), nx):
         A[i, i-1] = 0  # Left of grid
         A[i+nx-1, i+nx] = 0  # Right of grid
 
-    # A[nx-1, nx] = 0
-    # A[nx**2-nx, nx**2-nx-1] = 0
-
     return A
 
 
-def CNstep(n, r, b, Ainv, AinvB, dt, t, flux=0):
+def CNstep(n, r, b, Ainv, AinvB, dt, t, flux=0, AnInv=0):
     nx = int(np.sqrt(Ainv.shape[0]))
-    dtf = Ainv@(dt*f(n[t, :], r[t, :], b[t, :]))
+    fn = f(n[t, :], r[t, :], b[t, :])
+    dtf = Ainv@(dt*fn)
+    dtfNeymann = (dt*fn)
     n[t+1, :] = AinvB@n[t, :] + dtf + flux
-    r[t+1, :] = r[t, :] + dtf
-    b[t+1, :] = b[t, :] - dtf
-    n[t, [0, nx-1]] = 0
-    for i in range(nx, nx*nx-nx, nx):
-        # can make diag identity for this maybe
-        n[t, [i, i+nx-1]] = 0
+    r[t+1, :] = r[t, :] + dtfNeymann
+    b[t+1, :] = b[t, :] - dtfNeymann
+    # r[t+1, :] = r[t, :] + dtf
+    # b[t+1, :] = b[t, :] - dtf
+    # n[t, [0, nx-1]] = 0
+    # for i in range(nx, nx*nx-nx, nx):
+    #     # can make diag identity for this maybe
+    #     n[t, [i, i+nx-1]] = 0
 
 
 def CN2D(nx, ny, sigma, dt, ts: int, flux=0, **kwargs):
@@ -160,22 +164,17 @@ def CN2D(nx, ny, sigma, dt, ts: int, flux=0, **kwargs):
     Returns:
         (n, r, b): Concentrations of n, r, b for all timesteps
     """
-    A = makeA_2DDirichlet(nx, ny, sigma)
-    B = makeA_2DDirichlet(nx, ny, -sigma)
+
     # matrices for all timesteps
     n = np.zeros((ts, nx*ny))
     r = np.zeros((ts, nx*ny))
     b = np.zeros((ts, nx*ny))
-    # n0 = discDistr(nx, ny, [nx/2, ny/2], 0.2*nx, 5000)
-    # n[0, :], r[0, :], b[0, :] = n0, r0, b0
 
     rDisc = nx/2
     loc   = [nx/2, ny/2]  # center
     # init values
-    # flux = 0
     fluxts=ts
     m = discDistr(nx, ny, loc, rDisc, flux)
-    # mSum = np.sum(m)
     n[0, :] = m
     r[0, :] = 1e3*4*0.22**2/(nx*ny)  # uniform conc of receptors on entire grid
 
@@ -185,39 +184,39 @@ def CN2D(nx, ny, sigma, dt, ts: int, flux=0, **kwargs):
             case 'n0': n[0, :] = value
             case 'radius': rDisc = value
             case 'location': loc = value
-            # case 'flux': flux = value  # don't need to be case?
-            case 'fluxts':
-                fluxts = value
-                # print('Total NT:', flux*fluxts)
+            case 'fluxts': fluxts = value
+            case 'details':
+                print(
+                    '\n\nRun details:\n'
+                    'Grid (nx, ny):   {}\n'
+                    'Timesteps:       {}\n'
+                    'Total NT/step:   {}\n'
+                    'Total NT         {}\n'
+                    'NT/sec           {:.2e}'
+                    ''.format((nx, ny), ts, flux, flux*fluxts, flux/dt)
+                )
             case other as o:
                 print('Ey, "{}" is not correct, duh.'.format(o))
 
-    print('\n\nRun details:\n'
-          'Grid (nx, ny):   {}\n'
-          'Timesteps:       {}\n'
-          'Total NT/step:   {}\n'
-          'Total NT         {}\n'
-          'NT/sec           {:.2e}'
-          ''.format((nx, ny), ts, flux, flux*fluxts, flux/dt)
-          )
-
     # Precompute/allocate memory
+    A = makeA_2DDirichlet(nx, ny, sigma)
+    B = makeA_2DDirichlet(nx, ny, -sigma)
+    An = makeA_2DNeyman(nx, ny, sigma)
+
     Ainv  = inv(A)
     AinvB = Ainv@B
-    dtf   = np.zeros(nx*ny)
+    AnInv = inv(An)
 
+    # compute
     with alive_bar(ts-1) as bar:
         if fluxts:
-            for t in (range(fluxts)):
-                CNstep(n, r, b, Ainv, AinvB, dt, t, m)
+            for t in (range(fluxts-1)):
+                CNstep(n, r, b, Ainv, AinvB, dt, t, m, AnInv=AnInv)
                 bar()
             m = np.zeros(nx**2)
 
-        for t in range(fluxts, ts-1):
-            CNstep(n, r, b, Ainv, AinvB, dt, t, m)
-            # for i in range(nx, nx*ny-nx, nx):
-            #     # can make diag identity for this maybe
-            #     n[t, [i, i+nx-1]] = 0
+        for t in range(fluxts-1, ts-1):
+            CNstep(n, r, b, Ainv, AinvB, dt, t, m, AnInv=AnInv)
             bar()
 
     # for t in (range(ts-1)):

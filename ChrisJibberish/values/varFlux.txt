@@ -1,0 +1,3 @@
+Grid: (nx,ny) =    (31, 31)
+Timesteps, dt:     2000, 2.015e-10
+Fluxes:            [ 5 10 15 20 25]
