@@ -1,0 +1,7 @@
+grid:      [31, 31]
+time:      1e-06
+timesteps: 1000
+dt:        9.999999999999999e-10
+flux:      500
+stable:    35
+signal:    370

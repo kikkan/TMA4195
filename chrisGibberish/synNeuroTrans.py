@@ -7,7 +7,7 @@ np.set_printoptions(linewidth=160)
 warnings.filterwarnings("ignore")
 
 # %% run options
-runSingle              = 1
+runSingle              = 0
 singleRunAni           = 0
 singleRunPrintAns      = 0
 singleRunSaveFigs      = 0
@@ -17,6 +17,7 @@ fluxTermination        = 0
 variableFlux           = 0
 constNTdiffTermination = 0
 variableRadius         = 0
+neymannBound           = 1
 
 
 # %% Units
@@ -376,3 +377,45 @@ if variableRadius:
                      )
 
     plt.show()
+
+
+# %% Neymann boundary conditions
+if neymannBound:
+    time = 1e-6
+    ts = 1000
+    dt = time/ts
+    nx = ny=31
+    dx = dy = 2*radius/nx
+    sigma = D*dt/(2*dx*dy)
+    flux=500
+
+    # n0 = discDistr(nx, nx, [nx, nx]/2, nx/2, 500)
+    n, r, b = CN2D(nx, ny, sigma, dt, ts,
+                   flux=flux, fluxts=1, makeA=makeA_2DNeyman)
+
+    ngrad = np.abs(np.gradient(n, axis=0))
+    gradsum = np.sum(ngrad, axis=1)
+    st = np.argmax(gradsum<0.5)
+    si = np.argmax(np.sum(b, axis=1)>192/2)
+    print(st, si)
+    print(stable(n, 0.5), signal(b))  # could use this instead
+    # exit()
+    runInfo(
+        1, 1, fn='values\\neymannBoundaries.txt',
+        grid=[nx, ny], time=time, timesteps=ts, dt=dt, flux=flux, stable=st, signal=si
+    )
+
+    # plt.plot(gradsum)
+    # plt.vlines(stable, 0, max(gradsum))
+    # plt.show()
+
+    # animate3D(n, timesteps=ts)
+    plotConcProgress({r'N': n, r'B': b, r'R': r}, hlines=192/2, axis=[r'Timesteps', 'Number of particles'], save='CN2D_Neymann_concProgress')
+    plt.show()
+
+    # saveNTcritPlots(nx, ny, n, st, si, fnAdd='Neymann_n', zlim=[0, np.max(n)*(1.+0.1)])
+    # # plt.show()
+    # saveNTcritPlots(nx, ny, b, st, si, fnAdd='Neymann_b', zlim=[0, np.max(b)*(1.+0.1)])
+    # # plt.show()
+    # saveNTcritPlots(nx, ny, r, st, si, fnAdd='Neymann_r', zlim=[0, np.max(r)*(1.+0.1)])
+    # # plt.show()

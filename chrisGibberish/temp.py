@@ -2,7 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.sparse import diags, csc_matrix
 from scipy.sparse.linalg import spsolve, inv
-
+from numericalMethod import *
+from plotFncs import *
 
 # offset = np.array([-1, 0, 1])
 
@@ -50,24 +51,24 @@ from scipy.sparse.linalg import spsolve, inv
 
 
 # %% circle distr.
-def plot_3D(Nx, Ny, ct, g=0, save=0, fn=None, title=0):
-    x = np.linspace(0, 1, Nx)
-    y = np.linspace(0, 1, Ny)
-    x, y = np.meshgrid(x, y)
-    fig = plt.figure()
-    ax = fig.gca(projection="3d")
-    if g:
-        diff = ct.max() - ct.min()
-        ax.axes.set_zlim3d(ct.min() - g*diff, ct.max() + g*diff)
-    # z = ct.reshape((Nx, Ny))
-    z= ct
-    ax.plot_surface(x, y, z, cmap="viridis")
-    if title:
-        plt.title(title)
-    if save:
-        plt.savefig('figures\\'+fn+'.pdf')
-    else:
-        plt.show()
+# def plot_3D(Nx, Ny, ct, g=0, save=0, fn=None, title=0):
+#     x = np.linspace(0, 1, Nx)
+#     y = np.linspace(0, 1, Ny)
+#     x, y = np.meshgrid(x, y)
+#     fig = plt.figure()
+#     ax = fig.gca(projection="3d")
+#     if g:
+#         diff = ct.max() - ct.min()
+#         ax.axes.set_zlim3d(ct.min() - g*diff, ct.max() + g*diff)
+#     # z = ct.reshape((Nx, Ny))
+#     z= ct
+#     ax.plot_surface(x, y, z, cmap="viridis")
+#     if title:
+#         plt.title(title)
+#     if save:
+#         plt.savefig('figures\\'+fn+'.pdf')
+#     else:
+#         plt.show()
 
 
 def abc(x0, y0, x, r):
@@ -138,8 +139,57 @@ def discDistr(nx, ny, prec, r, loc):
 
 # %% plot ticks
 
-x = np.linspace(-10, 10, 35)
-y = x**2
-plt.plot(x, y)
-plt.xticks([-5, 0, 5])
+# x = np.linspace(-10, 10, 35)
+# y = x**2
+# plt.plot(x, y)
+# plt.xticks([-5, 0, 5])
+# plt.show()
+
+
+# %%
+radius    = 220e-9
+D         = 8e-7
+time      = 1e-5
+timesteps = 100
+# dt        = time/timesteps
+dt        = 1e-9
+nx        = 31  # Discretization in x
+ny        = 31  # Dicretization in y
+dx        = 2*radius/nx
+dy        = 2*radius/ny
+sigma     = D*dt / (2*dx*dy)
+rDisc     = 0.1*nx/2  # defaults to width of grid
+loc       = [nx/2, nx/2]  # defaults to center
+flux      = 20
+
+# n, r, b = CN2D(nx, ny, sigma, dt, timesteps, flux=flux, fluxts=timesteps,
+#                radius=rDisc)
+# np.set_printoptions(linewidth=160, precision=2)
+# for i in range(timesteps):
+#     #     plot_3D(nx, ny, n[i, :], title=i)
+#     print(np.reshape(n[i, :], (nx, ny)))
+#     print()
+# # plt.show()
+# plotConcProgress({'n': n})
+# animate3D(n, interval=700, timesteps=timesteps-1, zlim=6)
+
+
+# %% sin and cos distr of R
+def rSinCos(nx, ny, R=192):
+    r = np.zeros((nx, ny))
+    for i in range(nx):
+        for j in range(ny):
+            r[i, j] = np.sin(i) + np.cos(j) + 2
+    r = R*r/np.sum(r)
+    print(np.sum(r))
+    return np.reshape(r, nx*ny)
+
+
+nr, rr, br = CN2D(nx, ny, sigma, dt, timesteps, flux=flux, fluxts=timesteps,
+                  radius=nx/2, r0=rSinCos(nx, ny))
+n, r, b = CN2D(nx, ny, sigma, dt, timesteps, flux=flux, fluxts=timesteps,
+               radius=nx/2)
+
+plotConcProgress({'br': br, 'b': b})
+plotConcProgress({'rr': rr, 'r': r})
 plt.show()

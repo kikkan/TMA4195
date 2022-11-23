@@ -42,7 +42,7 @@ def plotset(z, zlim):
     cset = ax.contour(x, y, z, zdir='z', offset=-1., cmap='viridis')
 
 
-def animate3D(c, nx=0, ny=0, zlim=None, timesteps=500, show=1):
+def animate3D(c, nx=0, ny=0, zlim=None, timesteps=500, interval=1, show=1):
     """Animates concentration assuming quadratic grid. If not quadratic, grid 
     size in x, nx, and y, ny, must be supplied.
 
@@ -84,7 +84,7 @@ def animate3D(c, nx=0, ny=0, zlim=None, timesteps=500, show=1):
                            linewidth=0, antialiased=False, alpha=0.7)
 
     ani = animation.FuncAnimation(fig, update, fargs=(c, surf, zlim),
-                                  frames=timesteps, interval=1, blit=False)
+                                  frames=timesteps, interval=interval, blit=False)
     if show:
         plt.show()
 
@@ -130,19 +130,25 @@ def plotFluxTermination(cTots: dict, ts: int, dt: float, **kwargs):
 # %% Plot functions for figures to be saved
 
 
-def plot_3D(Nx, Ny, ct, g=0, save=0, fn=None, title=0, zlab=0):
+def plot_3D(Nx, Ny, ct, g=0, save=0, fn=None, title=0, zlim=0):
     x = np.linspace(0, 1, Nx)
     y = np.linspace(0, 1, Ny)
     x, y = np.meshgrid(x, y)
     fig = plt.figure()
     ax = fig.gca(projection="3d")
+
     if g:
         diff = ct.max() - ct.min()
         ax.axes.set_zlim3d(ct.min() - g*diff, ct.max() + g*diff)
+
+    if type(zlim)!=int:
+        ax.axes.set_zlim3d(zlim[0], zlim[1])
+
     z = ct.reshape((Nx, Ny))
     ax.plot_surface(x, y, z, cmap="viridis")
     plt.xlabel(r'$x$')
     plt.ylabel(r'$y$')
+
     if title:
         plt.title(title)
     if save:
@@ -153,7 +159,7 @@ def plot_3D(Nx, Ny, ct, g=0, save=0, fn=None, title=0, zlab=0):
     # plt.show()
 
 
-def saveNTcritPlots(nx, ny, c, stable, signal, dn=1e-3, fnAdd='', other=[], otherLabs=[]):
+def saveNTcritPlots(nx, ny, c, stable, signal, dn=1e-3, fnAdd='', zlim=0, other=[], otherLabs=[]):
     # grad = np.gradient(n, axis=0)
     # diff = np.abs(n[:-1, :] - n[1:, :])
     # diffSum = np.sum(diff, axis=1)
@@ -165,11 +171,11 @@ def saveNTcritPlots(nx, ny, c, stable, signal, dn=1e-3, fnAdd='', other=[], othe
     # # print(np.sum(gradSum - diffSum))
     # stable = stable(n, dn)
     # signal = signal(b)
-    plot_3D(nx, ny, c[0, :], save=1, fn="CN2D_"+fnAdd+"_initial" + fnAdd)
-    plot_3D(nx, ny, c[stable, :], save=1, fn="CN2D_"+ fnAdd +"_stable_" +  str(stable))
-    plot_3D(nx, ny, c[signal, :], save=1, fn="CN2D_"+fnAdd +"_signal_" + fnAdd+str(signal))
+    plot_3D(nx, ny, c[0, :], save=1, fn="CN2D_"+fnAdd+"_initial", zlim=zlim)
+    plot_3D(nx, ny, c[stable, :], save=1, fn="CN2D_"+ fnAdd +"_stable_" +  str(stable), zlim=zlim)
+    plot_3D(nx, ny, c[signal, :], save=1, fn="CN2D_"+fnAdd +"_signal_" +str(signal), zlim=zlim)
     for i in range(len(other)):
-        plot_3D(nx, ny, n[other[i], :], save=1, fn=otherLabs[i])
+        plot_3D(nx, ny, c[other[i], :], save=1, fn=otherLabs[i])
 
 
 def plotConcProgress(cDict, x=0, **kwargs):

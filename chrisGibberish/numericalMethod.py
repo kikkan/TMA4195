@@ -20,7 +20,24 @@ def f(n, r, b):
 
 
 def stable(n, dn=1e-3):
-    return np.argmax(np.gradient(np.sum(n, axis=1))<dn)
+    return np.argmax(np.sum(np.abs(np.gradient(n, axis=0)), axis=1)<dn)
+    # return np.argmax(np.gradient(np.sum(n, axis=1))<dn)
+
+
+def runInfo(save, show, fn='', **kwargs):
+    s = ''
+    maxLen = 0
+    for k in kwargs.keys():
+        maxLen = max([maxLen, len(k)])
+
+    for k, v in kwargs.items():
+        s+='{1:<{0}}{2}\n'.format(maxLen+2, k+':', v)
+    if show:
+        print(s)
+    if save:
+        with open(fn, 'w') as f:
+            f.write(s)
+            f.close()
 
 
 def signal(b, r0half=192/2):
@@ -62,6 +79,15 @@ def discDistr(nx, ny, loc, r, fluxTot):
     # print(round(m, 2))
     m = m/np.sum(m)*fluxTot
     return m.reshape(nx*ny)
+
+
+def rSinCos(nx, ny, R=192/2):
+    r = np.zeros((nx, ny))
+    for i in range(nx):
+        for j in range(ny):
+            r[i, j] = np.sin(i) + np.cos(j) + 2
+    r = R*r/np.sum(r)
+    return np.reshape(r, nx*ny)
 
 
 def makeA_2DNeyman(nx: int, ny: int, sigma: float):
@@ -160,7 +186,7 @@ def CNstep(n, r, b, Ainv, AinvB, dt, t, flux=0, AnInv=0):
     #     n[t, [i, i+nx-1]] = 0
 
 
-def CN2D(nx, ny, sigma, dt, ts: int, flux=0, **kwargs):
+def CN2D(nx, ny, sigma, dt, ts: int, flux=0, makeA=makeA_2DDirichlet, **kwargs):
     """Performs CN in 2D using matrix multiplication of sparse matrices.
 
     Args:
@@ -182,8 +208,6 @@ def CN2D(nx, ny, sigma, dt, ts: int, flux=0, **kwargs):
     loc   = [nx/2, ny/2]  # center
     # init values
     fluxts=ts
-    m = discDistr(nx, ny, loc, rDisc, flux)
-    n[0, :] = m
     r[0, :] = 1e3*4*0.22**2/(nx*ny)  # uniform conc of receptors on entire grid
 
     # Kwargs handling
@@ -203,12 +227,18 @@ def CN2D(nx, ny, sigma, dt, ts: int, flux=0, **kwargs):
                     'NT/sec           {:.2e}'
                     ''.format((nx, ny), ts, flux, flux*fluxts, flux/dt)
                 )
+            case 'r0': r[0, :] = value
             case other as o:
                 print('Ey, "{}" is not correct, duh.'.format(o))
 
+    m = discDistr(nx, ny, loc, rDisc, flux)
+    n[0, :] = m
+
     # Precompute/allocate memory
-    A = makeA_2DDirichlet(nx, ny, sigma)
-    B = makeA_2DDirichlet(nx, ny, -sigma)
+    # A = makeA_2DDirichlet(nx, ny, sigma)
+    # B = makeA_2DDirichlet(nx, ny, -sigma)
+    A = makeA(nx, ny, sigma)
+    B = makeA(nx, ny, -sigma)
     An = makeA_2DNeyman(nx, ny, sigma)
 
     Ainv  = inv(A)
